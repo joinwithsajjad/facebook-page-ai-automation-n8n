@@ -1,0 +1,488 @@
+{
+  "name": "Facebook Page Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "multipleMethods": true,
+        "path": "your-webhook-uuid-path",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -16,
+        48
+      ],
+      "id": "79699dab-f353-4c77-b355-5d758ab85238",
+      "name": "Webhook",
+      "webhookId": "your-webhook-uuid-path"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "8e175349-8eb7-4f82-afca-5b2afff3118d",
+              "leftValue": "={{ $json.query.hub_mode }}",
+              "rightValue": "subscribe",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "b8df9090-1425-4f14-9a54-b9afec809d48",
+              "leftValue": "={{ $json.query.hub_verify_token }}",
+              "rightValue": "YOUR_VERIFY_TOKEN",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        288,
+        32
+      ],
+      "id": "49b679fa-986b-48eb-9f44-c9819372c379",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.query.hub_challenge }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        560,
+        16
+      ],
+      "id": "d10647b5-8c24-46f5-848d-666f7b9142c9",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body.entry[0].messaging[0].message.text }}",
+        "options": {
+          "systemMessage": "You are a helpful assistant\n\nYou are a professional and friendly customer service AI agent for a Facebook Page.\n\nYour main responsibility is to communicate naturally with customers, understand their requests, answer questions using the available product and FAQ information, and process orders correctly.\n\nORDER PROCESS:\n\n1. When a customer wants to place an order, first understand exactly which product they want and how much quantity they want.\n\n2. Check the Products data to verify:\n   - Product name\n   - Available quantity\n   - Unit (KG or Liter)\n   - Unit price\n\n3. Before confirming an order, make sure all required order information is available:\n   - Customer name\n   - Phone number\n   - Product name\n   - Quantity\n   - Unit\n   - Unit price\n   - Delivery address\n\n4. If any required information is missing, politely ask the customer for the missing information. Do not confirm the order until all required information is available.\n\n5. Before confirming, review the complete order details and make sure:\n   - The requested product exists.\n   - The requested quantity is available.\n   - The unit is correct.\n   - The price is correct.\n   - The total price is calculated correctly.\n\n6. Calculate the total price as:\n   Total Price = Quantity × Unit Price\n\n7. Once all required information has been collected and verified, clearly show the customer a summary of the order and ask for confirmation.\n\n8. Only after the customer explicitly confirms the order (for example: \"Yes\", \"Confirm\", \"ঠিক আছে\", \"অর্ডার করুন\", etc.), treat the order as CONFIRMED.\n\n9. Never assume that a customer has confirmed an order unless they explicitly confirm it.\n\n10. If the customer changes the product, quantity, phone number, name, or delivery address, update the order information and verify it again before confirmation.\n\nCUSTOMER COMMUNICATION:\n\n- Be polite, friendly, professional, and natural.\n- Keep replies clear and reasonably short.\n- Reply in the same language as the customer whenever possible.\n- Do not provide information that is not available in the Products or FAQ data.\n- Do not invent product names, prices, stock quantities, or policies.\n- If you do not know something, politely tell the customer that you do not have that information.\n\nORDER CONFIRMATION FORMAT:\n\nBefore confirmation, use a format similar to:\n\nOrder Summary:\nProduct: [Product Name]\nQuantity: [Quantity] [Unit]\nUnit Price: [Price] BDT\nTotal Price: [Total Price] BDT\nCustomer Name: [Name]\nPhone Number: [Phone Number]\nDelivery Address: [Address]\n\nThen ask:\n\"Would you like me to confirm this order?\"\n\nAFTER CUSTOMER CONFIRMS:\n\nOnce the customer explicitly confirms:\n- Mark the order status as \"Confirmed\".\n- Prepare the complete order information for saving to the Orders Google Sheet.\n- Do not ask for the same information again unless something is missing or unclear.\n\nIMPORTANT RULES:\n\n- Never confirm an incomplete order.\n- Never create an order using guessed information.\n- Never change the customer's requested quantity without permission.\n- Never claim that an order has been confirmed before the customer confirms it.\n- Always verify product availability before confirming.\n- Always use the actual price from the Products data.\n- Always calculate the total price accurately."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        400,
+        176
+      ],
+      "id": "9ae39c8b-6cff-4d80-af8d-f90feecff29b",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.body.entry[0].messaging[0].sender.id }}",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        416,
+        320
+      ],
+      "id": "44cf49cb-3cca-4436-969e-149029f5ce93",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v26.0/YOUR_FACEBOOK_PAGE_ID/messages",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "access_token",
+              "value": "YOUR_FACEBOOK_PAGE_ACCESS_TOKEN"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"recipient\": {\n    \"id\": \"{{ $('Webhook').first().json.body.entry[0].messaging[0].sender.id }}\"\n  },\n  \"messaging_type\": \"RESPONSE\",\n  \"message\": {\n    \"text\": {{ JSON.stringify($json.output) }}\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        752,
+        176
+      ],
+      "id": "796934c9-c082-43f8-9e9b-c54019511413",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Facebook Page",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Prouduct",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        528,
+        368
+      ],
+      "id": "9b10c0c2-d851-4147-b00a-db1adf706214",
+      "name": "Get row(s) in sheet in Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "D5RKlQcxbI4vsKaQ",
+          "name": "OAuth Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Facebook Page",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1649048235,
+          "mode": "list",
+          "cachedResultName": "FAQ",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit#gid=1649048235"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        688,
+        352
+      ],
+      "id": "20fc063c-eda8-48c5-94a9-4322c99dc385",
+      "name": "Get row(s) in sheet in Google Sheets1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "D5RKlQcxbI4vsKaQ",
+          "name": "OAuth Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Facebook Page",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 573932505,
+          "mode": "list",
+          "cachedResultName": "Order",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit#gid=573932505"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Order ID": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Order_ID', ``, 'string') }}",
+            "Customer Name": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Customer_Name', ``, 'string') }}",
+            "Phone Number": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Phone_Number', ``, 'string') }}",
+            "Product Name": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Product_Name', ``, 'string') }}",
+            "Quantity": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Quantity', ``, 'string') }}",
+            "Unit": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Unit', ``, 'string') }}",
+            "Unit Price": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Unit_Price', ``, 'string') }}",
+            "Total Price": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Total_Price', ``, 'string') }}",
+            "Delivery Address": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Delivery_Address', ``, 'string') }}",
+            "Order Status": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Order_Status', ``, 'string') }}",
+            "Order Date": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Order_Date', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Order ID",
+              "displayName": "Order ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Customer Name",
+              "displayName": "Customer Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone Number",
+              "displayName": "Phone Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Product Name",
+              "displayName": "Product Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Quantity",
+              "displayName": "Quantity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Unit",
+              "displayName": "Unit",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Unit Price",
+              "displayName": "Unit Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Total Price",
+              "displayName": "Total Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Delivery Address",
+              "displayName": "Delivery Address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Order Status",
+              "displayName": "Order Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Order Date",
+              "displayName": "Order Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        880,
+        384
+      ],
+      "id": "21edf115-daae-4ea5-aa04-5366ca05e39e",
+      "name": "Append row in sheet in Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "D5RKlQcxbI4vsKaQ",
+          "name": "OAuth Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-20b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        256,
+        304
+      ],
+      "id": "8ecbe27a-d3b0-498e-9ab6-24ef48a74737",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "H4hNP9U1HnbUw9Ah",
+          "name": "Groq account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet in Google Sheets": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet in Google Sheets1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet in Google Sheets": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "97c9c889-734e-463c-a38c-64908b9aebcb",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "id": "Ax0JUUEolwt4wpiW",
+  "tags": []
+}
